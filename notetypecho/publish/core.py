@@ -35,7 +35,7 @@ def get_all_file(path_root):
                 file_tree.files.append(path)
 
     file_tree.files.sort()
-    file_tree.categories.sort()
+    file_tree.categories.sort(key=lambda x: x.name)
     return file_tree
 
 
