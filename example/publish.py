@@ -1,8 +1,8 @@
 # coding=utf-8
 import os
 
-from notetypecho.core import Typecho
-from notetypecho.publish.core import PostAll
+from funtypecho.core import Typecho
+from funtypecho.publish.core import PostAll
 
 content_root = "/root/workspace/content/publish" if os.getcwd().startswith(
     '/root') else "/Users/new/workspace/noteanalyse/content"

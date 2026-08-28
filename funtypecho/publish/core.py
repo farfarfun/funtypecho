@@ -6,7 +6,7 @@ from time import sleep
 import nbformat
 import yaml
 from nbconvert import MarkdownExporter
-from notetypecho.core import Category, Post, Typecho
+from funtypecho.core import Category, Post, Typecho
 
 
 class FileTree:
