@@ -1,36 +1,32 @@
 # funtypecho
 
-#### Description
-{**When you're done, you can delete the content in this README and update the file with details for others getting started with your repository**}
+`funtypecho` is a Typecho XML-RPC client for posts, pages, categories, tags, attachments, and comments. It also includes an optional Markdown/Notebook publisher.
 
-#### Software Architecture
-Software architecture description
+## Installation
 
-#### Installation
+```bash
+uv add funtypecho
+uv add 'funtypecho[publish]'
+```
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+```python
+from funtypecho import Post, Typecho
 
-#### Instructions
+client = Typecho("https://example.com/action/xmlrpc", "user", "password")
+post_id = client.new_post(Post(title="Hello", description="Content"), publish=False)
+print(post_id)
+```
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+RPC failures raise `RuntimeError` with the remote error context.
 
-#### Contribution
+---
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+## About farfarfun
 
+[farfarfun](https://github.com/farfarfun) is an open-source organization focused on practical libraries for cloud storage, data processing, AI, multimedia, and developer tooling.
 
-#### Gitee Feature
+- Organization: <https://github.com/farfarfun>
+- PyPI: <https://pypi.org/user/niuliangtao/>
+- Contact: farfarfun@qq.com
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+This project is released under the [MIT](LICENSE) license.

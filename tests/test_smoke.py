@@ -1,9 +1,4 @@
-"""Minimal smoke test for funtypecho.
-
-Only verifies that the package imports cleanly. funtypecho.main builds an
-xmlrpc.client.ServerProxy, but only inside Typecho.__init__ -- importing
-the module itself performs no network I/O.
-"""
+"""基础导入测试。"""
 
 
 def test_import():
