@@ -26,8 +26,14 @@ RPC 失败会抛出带远端错误信息的 `RuntimeError`。
 ```bash
 uv sync --extra publish
 uv run pytest
-uv build
+uv run ruff check .
+uv run ruff format --check .
+uv run funbuild install
 ```
+
+发布前先更新变更记录并确认版本递增符合预期，再执行 `uv run funbuild
+build`。该命令会依次完成版本递增、构建、产物安装校验、发布和 Git
+标签；需要预先通过环境变量配置 PyPI 凭据。
 
 ---
 

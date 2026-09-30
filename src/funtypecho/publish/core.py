@@ -21,7 +21,7 @@ class FileTree:
 
 
 def get_all_file(path_root: str | Path) -> FileTree:
-    """扫描目录，返回其中的 Markdown 和 Notebook 文件。"""
+    """扫描 `path_root`，返回其中 Markdown 和 Notebook 组成的目录树。"""
     root = Path(path_root)
     file_tree = FileTree(root.name)
     for path in root.iterdir():
@@ -41,7 +41,7 @@ def get_all_file(path_root: str | Path) -> FileTree:
 
 
 def coalesce(params: list[Any] | None) -> Any:
-    """返回列表中第一个非空值。"""
+    """返回 `params` 中第一个非 None 值；没有可用值时返回 None。"""
     if params is None or len(params) == 0:
         return None
     for param in params:
@@ -54,13 +54,14 @@ class PostAll:
     """把目录树中的文档发布到 Typecho。"""
 
     def __init__(self, typecho: Typecho) -> None:
+        """使用 `typecho` 客户端创建批量发布器，无返回值。"""
         self.typecho: Typecho = typecho
         self.categories = [
             entry["categoryName"] for entry in self.typecho.get_categories()
         ]
 
     def post(self, path: str | Path, categories: list[str]) -> str | None:
-        """发布单个 Markdown 或 Notebook 文件。"""
+        """将 `path` 发布到指定 `categories`，返回远端文章 ID。"""
         path = Path(path)
         filename, filetype = path.stem, path.suffix
 
@@ -83,8 +84,12 @@ class PostAll:
 
                     title = res.get("title", filename)
                     tags = res.get("tags", "")
-                    tmp_categories = categories or res.get("category", "").split(",")
-                    tmp_categories = categories
+                    metadata_categories = [
+                        item.strip()
+                        for item in res.get("category", "").split(",")
+                        if item.strip()
+                    ]
+                    tmp_categories = categories or metadata_categories
 
                     del jake_notebook.cells[0]
                     content, _ = mark.from_notebook_node(jake_notebook)
@@ -113,11 +118,11 @@ class PostAll:
         return self.typecho.new_post(post, publish=True)
 
     def name_convent(self, name: str) -> str:
-        """去除文件名开头的编号和分隔符。"""
+        """去除 `name` 开头的编号和分隔符，返回处理后的名称。"""
         return re.sub(r"^[\d|_.-]+", "", name)
 
     def category_manage(self, category: str, parent_id: int = 0) -> tuple[str, int]:
-        """创建分类并返回名称和 ID。"""
+        """创建分类，可指定父分类 ID；返回规范化名称和远端 ID。"""
         category = self.name_convent(category)
 
         cate = Category(name=category, parent=parent_id)
@@ -126,7 +131,7 @@ class PostAll:
     def post_tree(
         self, file_tree: FileTree, categories: list[str], parent_id: int = 0
     ) -> None:
-        """递归发布目录树。"""
+        """递归发布 `file_tree`，继承分类列表和父分类 ID，无返回值。"""
         if len(file_tree.files) == 0 and len(file_tree.categories) == 0:
             return
 
@@ -140,12 +145,11 @@ class PostAll:
         for tree in file_tree.categories:
             if "pass" in tree.name:
                 continue
-            self.post_tree(tree, categories=tree.name, parent_id=parent_id)
+            self.post_tree(tree, categories=[tree.name], parent_id=parent_id)
 
     def post_all(self, path_root: str | Path) -> None:
-        """发布目录下的全部文档。"""
+        """扫描并发布 `path_root` 下的全部文档，无返回值。"""
         res = get_all_file(path_root)
 
         for path in res.categories:
-            self.post_tree(path, categories=path.name, parent_id=0)
-            # break
+            self.post_tree(path, categories=[path.name], parent_id=0)

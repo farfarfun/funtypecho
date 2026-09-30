@@ -13,7 +13,7 @@ dependencies = ["farlog>=1.1.7"]
 publish = ["nbconvert>=7.16", "nbformat>=5.10", "PyYAML>=6.0"]
 
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = ["funbuild>=1.6.80", "pytest>=8.0", "ruff>=0.13"]
 
 [build-system]
 requires = ["hatchling"]
@@ -21,3 +21,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/funtypecho"]
+
+[tool.ruff]
+target-version = "py310"

@@ -11,25 +11,31 @@ class TypechoPostMixin:
     """文章相关的 Typecho XML-RPC 操作。"""
 
     def get_posts(self, num: int = 10) -> list[dict[str, Any]] | None:
-        """获取最近文章。"""
+        """获取最近文章。
+
+        参数：num 为最多返回的文章数。返回文章字典列表，空响应返回 None。
+        """
         return self.try_rpc(self.s.metaWeblog.getRecentPosts, num)
 
     def get_post(self, post_id: int) -> dict[str, Any] | None:
-        """按 ID 获取文章。"""
+        """按 ID 获取文章；返回文章字典，空响应返回 None。"""
         return self.try_rpc(self.s.metaWeblog.getPost, post_id)
 
     def new_post(self, post: Post, publish: bool) -> str | None:
-        """创建文章；`publish` 决定立即发布还是保存草稿。"""
+        """创建文章；`post` 为文章数据，`publish` 控制是否立即发布。
+
+        返回远端文章 ID，空响应返回 None。
+        """
         return self.try_rpc(self.s.metaWeblog.newPost, post, publish)
 
     def edit_post(self, post: Post, post_id: int, publish: bool) -> str | None:
-        """更新指定文章。"""
+        """更新文章；传入文章数据、文章 ID 和发布状态，返回远端结果。"""
         d = asdict(post)
         d.update({"postId": post_id})
         return self.try_rpc(self.s.metaWeblog.newPost, d, publish)
 
     def del_post(self, post_id: int) -> bool | None:
-        """删除指定文章。"""
+        """按 `post_id` 删除文章；返回是否删除成功，空响应返回 None。"""
         return self.try_rpc(self.s.blogger.deletePost, post_id)
 
 
@@ -37,27 +43,27 @@ class TypechoPageMixin:
     """页面相关的 Typecho XML-RPC 操作。"""
 
     def get_pages(self) -> list[dict[str, Any]] | None:
-        """获取全部页面。"""
+        """获取全部页面；返回页面字典列表，空响应返回 None。"""
         return self.try_rpc(self.s.wp.getPages)
 
     def get_page(self, page_id: int) -> dict[str, Any] | None:
-        """按 ID 获取页面。"""
+        """按 `page_id` 获取页面；返回页面字典，空响应返回 None。"""
         return self._try_rpc(
             self.s.wp.getPage, self.blog_id, page_id, self.username, self.password
         )
 
     def new_page(self, page: Page, publish: bool) -> str | None:
-        """创建页面。"""
+        """创建页面；`publish` 控制是否立即发布，返回远端页面 ID。"""
         return self.try_rpc(self.s.metaWeblog.newPost, page, publish)
 
     def edit_page(self, page: Page, page_id: int, publish: bool) -> str | None:
-        """更新指定页面。"""
+        """更新页面；传入页面数据、页面 ID 和发布状态，返回远端结果。"""
         d = asdict(page)
         d.update({"postId": page_id})
         return self.try_rpc(self.s.metaWeblog.newPost, d, publish)
 
     def del_page(self, page_id: int) -> bool | None:
-        """删除指定页面。"""
+        """按 `page_id` 删除页面；返回是否删除成功，空响应返回 None。"""
         return self.try_rpc(self.s.wp.deletePage, page_id)
 
 
@@ -65,15 +71,18 @@ class TypechoCategoryMixin:
     """分类相关的 Typecho XML-RPC 操作。"""
 
     def get_categories(self) -> list[dict[str, Any]] | None:
-        """获取分类。"""
+        """获取全部分类；返回分类字典列表，空响应返回 None。"""
         return self.try_rpc(self.s.metaWeblog.getCategories)
 
     def new_category(self, category: Category, parent_id: int = 0) -> str | None:
-        """创建分类。"""
+        """创建 `category`；返回分类 ID，空响应返回 None。
+
+        `parent_id` 为兼容参数；父分类应写入 `category.parent`。
+        """
         return self.try_rpc(self.s.wp.newCategory, category)
 
     def del_category(self, category_id: int) -> bool | None:
-        """删除分类。"""
+        """按 `category_id` 删除分类；返回是否成功，空响应返回 None。"""
         return self.try_rpc(self.s.wp.deleteCategory, category_id)
 
 
@@ -81,7 +90,7 @@ class TypechoTagMixin:
     """标签相关的 Typecho XML-RPC 操作。"""
 
     def get_tags(self) -> list[dict[str, Any]] | None:
-        """获取标签。"""
+        """获取全部标签；返回标签字典列表，空响应返回 None。"""
         return self.try_rpc(self.s.wp.getTags)
 
 
@@ -95,7 +104,10 @@ class TypechoAttachmentMixin:
         page_size: int | None = None,
         page_num: int | None = None,
     ) -> list[dict[str, Any]] | None:
-        """按文章、类型和分页条件获取附件。"""
+        """按文章、MIME 类型及分页参数获取附件。
+
+        返回附件字典列表，空响应返回 None。
+        """
         struct = {}
         if post_id:
             struct.update({"parent_id": post_id})
@@ -108,11 +120,11 @@ class TypechoAttachmentMixin:
         return self.try_rpc(self.s.wp.getMediaLibrary, struct)
 
     def get_attachment(self, attachment_id: int) -> dict[str, Any] | None:
-        """按 ID 获取附件。"""
+        """按 `attachment_id` 获取附件；返回附件字典或 None。"""
         return self.try_rpc(self.s.wp.getMediaItem, attachment_id)
 
     def new_attachment(self, data: Attachment) -> dict[str, Any] | None:
-        """上传附件。"""
+        """上传 `data` 附件；返回远端附件信息或 None。"""
         return self.try_rpc(self.s.wp.uploadFile, data)
 
 
@@ -126,7 +138,10 @@ class TypechoCommentMixin:
         page_size: int | None = None,
         page_num: int | None = None,
     ) -> list[dict[str, Any]] | None:
-        """按状态、文章和分页条件获取评论。"""
+        """按状态、文章及分页参数获取评论。
+
+        返回评论字典列表，空响应返回 None。
+        """
         struct = {}
         if status:
             struct.update({"status": status})
@@ -139,13 +154,16 @@ class TypechoCommentMixin:
         return self.try_rpc(self.s.wp.getComments, struct)
 
     def get_comment(self, comment_id: int) -> dict[str, Any] | None:
-        """按 ID 获取评论。"""
+        """按 `comment_id` 获取评论；返回评论字典或 None。"""
         return self.try_rpc(self.s.wp.getComment, comment_id)
 
     def new_comment(
         self, comment: Comment, post_id: int, comment_parent: str | None = None
     ) -> dict[str, Any] | None:
-        """创建评论。"""
+        """为 `post_id` 创建评论，可指定父评论 ID。
+
+        返回远端评论信息，空响应返回 None。
+        """
         d = asdict(comment)
         if comment_parent:
             d.update({"comment_parent": comment_parent})
@@ -153,11 +171,11 @@ class TypechoCommentMixin:
         return self.try_rpc(self.s.wp.newComment, path, d)
 
     def edit_comment(self, comment: Comment, comment_id: int) -> bool | None:
-        """更新评论。"""
+        """更新 `comment_id` 对应的评论；返回是否成功或 None。"""
         return self.try_rpc(self.s.wp.editComment, comment_id, comment)
 
     def del_comment(self, comment_id: int) -> bool | None:
-        """删除评论。"""
+        """按 `comment_id` 删除评论；返回是否成功或 None。"""
         return self.try_rpc(
             self.s.wp.deleteComment,
             comment_id,
@@ -172,8 +190,10 @@ class Typecho(
     TypechoAttachmentMixin,
     TypechoCommentMixin,
 ):
+    """Typecho XML-RPC 客户端，聚合文章、页面、分类和评论等 API。"""
+
     def __init__(self, rpc_url: str, username: str, password: str):
-        """创建客户端；参数依次为 XML-RPC 地址、用户名和密码。"""
+        """使用 XML-RPC 地址、用户名和密码创建客户端，无返回值。"""
         self.rpc_url = rpc_url
         self.username = username
         self.password = password
@@ -183,7 +203,10 @@ class Typecho(
         self.blog_id = 1
 
     def try_rpc(self, rpc_method: Callable[..., Any], *args: Any, **kw: Any) -> Any:
-        """调用需要 Typecho 认证参数的 RPC 方法。"""
+        """调用需要认证的 RPC 方法。
+
+        `args` 和 `kw` 会追加到认证参数之后；返回远端响应，空串转为 None。
+        """
         return self._try_rpc(
             rpc_method, self.blog_id, self.username, self.password, *args, **kw
         )
