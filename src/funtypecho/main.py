@@ -18,8 +18,14 @@ class TypechoPostMixin:
         return self.try_rpc(self.s.metaWeblog.getRecentPosts, num)
 
     def get_post(self, post_id: int) -> dict[str, Any] | None:
-        """按 ID 获取文章；返回文章字典，空响应返回 None。"""
-        return self.try_rpc(self.s.metaWeblog.getPost, post_id)
+        """按 ID 获取文章；返回文章字典，空响应返回 None。
+
+        `metaWeblog.getPost` 的参数顺序是 `(post_id, username, password)`，
+        不带 `blog_id`，与其他方法不同，因此不走 `try_rpc` 的通用拼参逻辑。
+        """
+        return self._try_rpc(
+            self.s.metaWeblog.getPost, post_id, self.username, self.password
+        )
 
     def new_post(self, post: Post, publish: bool) -> str | None:
         """创建文章；`post` 为文章数据，`publish` 控制是否立即发布。
@@ -29,14 +35,31 @@ class TypechoPostMixin:
         return self.try_rpc(self.s.metaWeblog.newPost, post, publish)
 
     def edit_post(self, post: Post, post_id: int, publish: bool) -> str | None:
-        """更新文章；传入文章数据、文章 ID 和发布状态，返回远端结果。"""
+        """更新文章；传入文章数据、文章 ID 和发布状态，返回远端结果。
+
+        Typecho 服务端的 `metaWeblog.editPost` 内部只是把 `postId` 塞进内容
+        字典后转调 `metaWeblog.newPost`（服务端据此判断是编辑还是新建），
+        这里直接调用 `newPost` 等价且少一次服务端转发。
+        """
         d = asdict(post)
         d.update({"postId": post_id})
         return self.try_rpc(self.s.metaWeblog.newPost, d, publish)
 
-    def del_post(self, post_id: int) -> bool | None:
-        """按 `post_id` 删除文章；返回是否删除成功，空响应返回 None。"""
-        return self.try_rpc(self.s.blogger.deletePost, post_id)
+    def del_post(self, post_id: int, publish: bool = True) -> bool | None:
+        """按 `post_id` 删除文章；返回是否删除成功，空响应返回 None。
+
+        `blogger.deletePost` 的参数顺序是
+        `(blog_id, post_id, username, password, publish)`，`post_id` 在
+        `username`/`password` 之前且必须传 `publish`，因此不走 `try_rpc`。
+        """
+        return self._try_rpc(
+            self.s.blogger.deletePost,
+            self.blog_id,
+            post_id,
+            self.username,
+            self.password,
+            publish,
+        )
 
 
 class TypechoPageMixin:
@@ -53,11 +76,22 @@ class TypechoPageMixin:
         )
 
     def new_page(self, page: Page, publish: bool) -> str | None:
-        """创建页面；`publish` 控制是否立即发布，返回远端页面 ID。"""
+        """创建页面；`publish` 控制是否立即发布，返回远端页面 ID。
+
+        Typecho 服务端的 `wp.newPage` 只是在 `content['post_type'] = 'page'`
+        后转发给 `metaWeblog.newPost` 处理，是否生成页面完全由内容里的
+        `post_type` 字段决定（`Page` 默认就是 `"page"`），因此直接调用
+        `metaWeblog.newPost` 等价且少一次服务端转发。
+        """
         return self.try_rpc(self.s.metaWeblog.newPost, page, publish)
 
     def edit_page(self, page: Page, page_id: int, publish: bool) -> str | None:
-        """更新页面；传入页面数据、页面 ID 和发布状态，返回远端结果。"""
+        """更新页面；传入页面数据、页面 ID 和发布状态，返回远端结果。
+
+        同理，Typecho 服务端的 `wp.editPage`/`metaWeblog.editPost` 内部都是把
+        `postId` 塞进内容字典后再调用 `metaWeblog.newPost`（服务端据此判断
+        是编辑还是新建），这里直接复用同一条路径。
+        """
         d = asdict(page)
         d.update({"postId": page_id})
         return self.try_rpc(self.s.metaWeblog.newPost, d, publish)
@@ -199,7 +233,7 @@ class Typecho(
         self.password = password
 
         self.s = ServerProxy(rpc_url)
-        # blog id could be any number.
+        # Typecho 为单博客系统，blog id 取任意值均可，固定填 1。
         self.blog_id = 1
 
     def try_rpc(self, rpc_method: Callable[..., Any], *args: Any, **kw: Any) -> Any:

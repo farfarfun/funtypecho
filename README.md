@@ -11,15 +11,35 @@ uv add 'funtypecho[publish]'
 
 ## 最小示例
 
+需要先有一个已开启 XML-RPC 的 Typecho 站点（后台「设置 - 常规 - 启用
+XML-RPC 服务」），把下面的 URL、用户名、密码替换为该站点的实际值：
+
 ```python
 from funtypecho import Post, Typecho
 
-client = Typecho("https://example.com/action/xmlrpc", "user", "password")
+client = Typecho("https://your-site.example.com/action/xmlrpc", "user", "password")
 post_id = client.new_post(Post(title="你好", description="正文"), publish=False)
 print(post_id)
 ```
 
 RPC 失败会抛出带远端错误信息的 `RuntimeError`。
+
+### 不依赖真实站点的本地示例
+
+没有可用的 Typecho 站点时，可以用 `unittest.mock` 打桩
+`xmlrpc.client.ServerProxy`，不访问网络也能在本地跑通调用链：
+
+```python
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+from funtypecho import Post, Typecho
+
+client = Typecho("https://your-site.example.com/action/xmlrpc", "user", "password")
+client.s = SimpleNamespace(metaWeblog=SimpleNamespace(newPost=Mock(return_value="1")))
+post_id = client.new_post(Post(title="你好", description="正文"), publish=False)
+print(post_id)  # "1"
+```
 
 ## 开发
 

@@ -1,5 +1,6 @@
 """公开 API 的本地边界测试。"""
 
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -7,7 +8,7 @@ from xmlrpc.client import Fault
 
 import pytest
 
-from funtypecho import Category, Comment, Page, Post, Typecho
+from funtypecho import Attachment, Category, Comment, Page, Post, Typecho
 from funtypecho.publish.core import PostAll, get_all_file
 
 
@@ -74,6 +75,120 @@ def test_edit_methods_add_remote_id():
     assert new_post.call_args.args[3]["postId"] == 7
     assert client.edit_page(Page("页面", "正文"), 8, False) == "ok"
     assert new_post.call_args.args[3]["postId"] == 8
+
+
+def test_get_post_uses_post_id_first_without_blog_id():
+    """`metaWeblog.getPost` 的真实参数顺序是 (post_id, username, password)，
+    不带 blog_id，与其他方法不同；回归测试锁定这个修复。"""
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    get_post = Mock(return_value={"postid": "5"})
+    client.s = SimpleNamespace(metaWeblog=SimpleNamespace(getPost=get_post))
+
+    assert client.get_post(5) == {"postid": "5"}
+    get_post.assert_called_once_with(5, "u", "p")
+
+
+def test_get_post_empty_response_returns_none():
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    client.s = SimpleNamespace(
+        metaWeblog=SimpleNamespace(getPost=Mock(return_value=""))
+    )
+    assert client.get_post(404) is None
+
+
+def test_del_post_sends_blogger_delete_post_full_signature():
+    """`blogger.deletePost` 需要 (blog_id, post_id, username, password, publish)
+    共 5 个参数且 post_id 在用户名密码之前；回归测试锁定这个修复。"""
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    delete_post = Mock(return_value=True)
+    client.s = SimpleNamespace(blogger=SimpleNamespace(deletePost=delete_post))
+
+    assert client.del_post(5) is True
+    delete_post.assert_called_once_with(1, 5, "u", "p", True)
+
+
+def test_del_post_propagates_fault():
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    client.s = SimpleNamespace(
+        blogger=SimpleNamespace(deletePost=Mock(side_effect=Fault(404, "not found")))
+    )
+    with pytest.raises(RuntimeError, match="404.*not found"):
+        client.del_post(999)
+
+
+def test_page_lifecycle_calls_expected_rpc_methods():
+    """覆盖 get_page/new_page/del_page 的正常路径与参数结构。"""
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    get_page = Mock(return_value={"page_id": "9"})
+    new_post = Mock(return_value="9")
+    delete_page = Mock(return_value=True)
+    client.s = SimpleNamespace(
+        wp=SimpleNamespace(getPage=get_page, deletePage=delete_page),
+        metaWeblog=SimpleNamespace(newPost=new_post),
+    )
+
+    assert client.get_page(9) == {"page_id": "9"}
+    get_page.assert_called_once_with(1, 9, "u", "p")
+
+    page = Page(title="页面", description="正文")
+    assert client.new_page(page, True) == "9"
+    new_post.assert_called_once_with(1, "u", "p", page, True)
+
+    assert client.del_page(9) is True
+    delete_page.assert_called_once_with(1, "u", "p", 9)
+
+
+def test_get_page_empty_response_returns_none():
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    client.s = SimpleNamespace(wp=SimpleNamespace(getPage=Mock(return_value="")))
+    assert client.get_page(404) is None
+
+
+def test_delete_and_detail_methods_pass_expected_arguments():
+    """覆盖分类/评论删除、标签、附件详情与上传的正常路径与参数结构。"""
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    wp = SimpleNamespace(
+        deleteCategory=Mock(return_value=True),
+        deleteComment=Mock(return_value=True),
+        getTags=Mock(return_value=[]),
+        getMediaItem=Mock(return_value={"attachment_id": "3"}),
+        uploadFile=Mock(return_value={"id": "3"}),
+    )
+    client.s = SimpleNamespace(wp=wp)
+
+    assert client.del_category(2) is True
+    wp.deleteCategory.assert_called_once_with(1, "u", "p", 2)
+
+    assert client.del_comment(4) is True
+    wp.deleteComment.assert_called_once_with(1, "u", "p", 4)
+
+    assert client.get_tags() == []
+    wp.getTags.assert_called_once_with(1, "u", "p")
+
+    assert client.get_attachment(3) == {"attachment_id": "3"}
+    wp.getMediaItem.assert_called_once_with(1, "u", "p", 3)
+
+    attachment = Attachment(name="pic.png", bytes=BytesIO(b"data"))
+    assert client.new_attachment(attachment) == {"id": "3"}
+    wp.uploadFile.assert_called_once_with(1, "u", "p", attachment)
+
+
+def test_delete_methods_empty_response_returns_none():
+    """删除类方法在远端返回空串时应统一转为 None，而不是误判为删除失败。"""
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    client.s = SimpleNamespace(
+        wp=SimpleNamespace(
+            deleteCategory=Mock(return_value=""),
+            deleteComment=Mock(return_value=""),
+            deletePage=Mock(return_value=""),
+        ),
+        blogger=SimpleNamespace(deletePost=Mock(return_value="")),
+    )
+
+    assert client.del_category(1) is None
+    assert client.del_comment(1) is None
+    assert client.del_page(1) is None
+    assert client.del_post(1) is None
 
 
 def test_publish_rejects_unknown_extension():

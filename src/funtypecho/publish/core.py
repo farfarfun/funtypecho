@@ -74,7 +74,7 @@ class PostAll:
             jake_notebook = nbformat.reads(path.read_text(), as_version=4)
             mark = MarkdownExporter()
             content, _ = mark.from_notebook_node(jake_notebook)
-            # check title
+            # 检查首个单元格是否为 YAML 格式的元数据标题块
             if len(jake_notebook.cells) >= 1:
                 source = str(jake_notebook.cells[0].source)
                 if source.startswith("- "):
