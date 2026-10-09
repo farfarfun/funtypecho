@@ -226,7 +226,7 @@ class Typecho(
 ):
     """Typecho XML-RPC 客户端，聚合文章、页面、分类和评论等 API。"""
 
-    def __init__(self, rpc_url: str, username: str, password: str):
+    def __init__(self, rpc_url: str, username: str, password: str) -> None:
         """使用 XML-RPC 地址、用户名和密码创建客户端，无返回值。"""
         self.rpc_url = rpc_url
         self.username = username

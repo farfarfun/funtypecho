@@ -197,6 +197,15 @@ def test_publish_rejects_unknown_extension():
         publisher.post("notes.txt", [])
 
 
+def test_publish_accepts_empty_category_response():
+    client = Typecho("http://example.test/xmlrpc", "u", "p")
+    client.s = SimpleNamespace(
+        metaWeblog=SimpleNamespace(getCategories=Mock(return_value=""))
+    )
+
+    assert PostAll(client).categories == []
+
+
 def test_post_model_is_typed():
     assert Post(title="title", description="body").categories == []
 
