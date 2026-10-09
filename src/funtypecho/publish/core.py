@@ -57,7 +57,7 @@ class PostAll:
         """使用 `typecho` 客户端创建批量发布器，无返回值。"""
         self.typecho: Typecho = typecho
         self.categories = [
-            entry["categoryName"] for entry in self.typecho.get_categories()
+            entry["categoryName"] for entry in (self.typecho.get_categories() or [])
         ]
 
     def post(self, path: str | Path, categories: list[str]) -> str | None:
